@@ -20,8 +20,6 @@ Our moonshot goal is to create a simulation that models cars and pedestrians arr
 ## AI/ML Algorithms
 Tentatively, we will use Proximal Policy Optimization (PPO), a model-free, on-policy reinforcement learning algorithm with a neural network function approximator.
 
-
-
 ## Evaluation Plan
 
 
