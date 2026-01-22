@@ -8,13 +8,13 @@ Our AI signal system is an intelligent traffic signal that minimizes idle time a
 
 ## Project Goals
 
-**Minimum Goal**
+**Minimum Goal:**
 Our minimum goal is to create a simulation that models cars only arriving at a 4-way traffic light controlled intersection over the course of a week. Based on this simulation, our AI algorithm will continually learn and optimize the light schedule for each direction, including left turn and straight green lights.
 
-**Realistic Goal**
+**Realistic Goal:**
 Our realistic goal is to create a simulation that models cars and pedestrians arriving at a 4-way traffic light controlled intersection over the course of a week. Based on this simulation, our AI algorithm will continually learn and optimize the light and crossing schedules for each direction, including left turn and straight green lights.
 
-**Moonshot Goal**
+**Moonshot Goal:**
 Our moonshot goal is to create a simulation that models cars and pedestrians arriving at an n-way traffic light controlled intersection over the course of a week. This intersection could have 1-way streets, or even be a 6-way intersection. Based on any situation, our AI algorithm would continually learn and optimize the light schedule and crossing schedule for each direction.
 
 ## AI/ML Algorithms
@@ -27,5 +27,5 @@ Tentatively, we will use Proximal Policy Optimization (PPO), a model-free, on-po
 
 
 ## AI Tool Usage
-
+Our plan is to use AI tools to help us create the testing environment/simulation engine. We will be creating the ai algorithm for the lights and crossing signs, but we want a fairly constantly random assortment of pedestrians and cars coming to our intersection. AI tools will help us model this to give us a good testing environment
 
