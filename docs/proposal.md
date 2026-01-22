@@ -26,5 +26,5 @@ Our moonshot goal is to create a simulation that models cars and pedestrians arr
 
 
 ## AI Tool Usage
-
+Our plan is to use AI tools to help us create the testing environment/simulation engine. We will be creating the ai algorithm for the lights and crossing signs, but we want a fairly constantly random assortment of pedestrians and cars coming to our intersection. AI tools will help us model this to give us a good testing environment
 
