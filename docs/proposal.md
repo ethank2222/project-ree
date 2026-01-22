@@ -18,6 +18,7 @@ Our realistic goal is to create a simulation that models cars and pedestrians ar
 Our moonshot goal is to create a simulation that models cars and pedestrians arriving at an n-way traffic light controlled intersection over the course of a week. This intersection could have 1-way streets, or even be a 6-way intersection. Based on any situation, our AI algorithm would continually learn and optimize the light schedule and crossing schedule for each direction.
 
 ## AI/ML Algorithms
+Tentatively, we will use Proximal Policy Optimization (PPO), a model-free, on-policy reinforcement learning algorithm with a neural network function approximator.
 
 
 
