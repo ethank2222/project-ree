@@ -146,30 +146,20 @@ def get_state():
 
 
 def get_wait_time():
-    total = 0
-    for veh_id in traci.vehicle.getIDList():
-        total += traci.vehicle.getWaitingTime(veh_id)
-    return total
+    return sum(traci.lane.getWaitingTime(lane) for lane in LANES)
 
 
 def run_baseline():
     traci.start(["sumo", "-c", CONFIG_PATH])
     step = 0
-    vehicle_wait_times = {}
-
+    total_wait = 0.0
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         if step % 200 == 0:
             phase = traci.trafficlight.getPhase(TL_ID)
             traci.trafficlight.setPhase(TL_ID, 2 if phase == 0 else 0)
-
-        # Track accumulated wait time for all active vehicles
-        for veh_id in traci.vehicle.getIDList():
-            vehicle_wait_times[veh_id] = traci.vehicle.getAccumulatedWaitingTime(veh_id)
-
+        total_wait += get_wait_time()
         step += 1
-
-    total_wait = sum(vehicle_wait_times.values())
     traci.close()
     return total_wait
 
@@ -178,11 +168,11 @@ def run_episode(agent, training=True):
     traci.start(["sumo", "-c", CONFIG_PATH])
 
     step = 0
+    total_wait = 0.0
     yellow_countdown = 0
     pending_phase = None
     current_green = 0
     accumulated_reward = 0.0
-    vehicle_wait_times = {}
 
     prev_state = None
     prev_action = None
@@ -222,12 +212,8 @@ def run_episode(agent, training=True):
 
         traci.simulationStep()
         wait = get_wait_time()
+        total_wait += wait
         accumulated_reward += -wait
-
-        # Track accumulated wait time for all active vehicles
-        for veh_id in traci.vehicle.getIDList():
-            vehicle_wait_times[veh_id] = traci.vehicle.getAccumulatedWaitingTime(veh_id)
-
         step += 1
 
     if training and prev_state is not None:
@@ -235,7 +221,6 @@ def run_episode(agent, training=True):
                     accumulated_reward, prev_value, True)
         agent.update()
 
-    total_wait = sum(vehicle_wait_times.values())
     traci.close()
     return total_wait
 
@@ -275,7 +260,17 @@ def main():
 
     # Plot learning curve
     plt.figure(figsize=(10, 6))
-    plt.plot(range(1, NUM_EPISODES + 1), episode_improvements, linewidth=2)
+    plt.plot(range(1, NUM_EPISODES + 1), episode_improvements, alpha=0.3, label='Raw Episodes')
+
+    # Add moving average to show trend
+    window = min(10, NUM_EPISODES // 5)
+    if NUM_EPISODES >= window:
+        moving_avg = []
+        for i in range(len(episode_improvements)):
+            start = max(0, i - window + 1)
+            moving_avg.append(np.mean(episode_improvements[start:i+1]))
+        plt.plot(range(1, NUM_EPISODES + 1), moving_avg, linewidth=2, label=f'{window}-Episode Moving Avg')
+
     plt.axhline(y=30, color='r', linestyle='--', label='30% Target')
     plt.axhline(y=improvement, color='g', linestyle='--', label=f'Final Eval: {improvement:.1f}%')
     plt.xlabel('Episode', fontsize=12)
