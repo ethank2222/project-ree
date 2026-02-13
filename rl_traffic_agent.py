@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
+import matplotlib.pyplot as plt
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
@@ -21,7 +22,7 @@ STATE_DIM = 14
 ACTION_DIM = 2
 DECISION_INTERVAL = 10
 YELLOW_DURATION = 3
-NUM_EPISODES = 20
+NUM_EPISODES = 100
 GAMMA = 0.99
 LR = 3e-4
 CLIP_EPS = 0.2
@@ -145,20 +146,30 @@ def get_state():
 
 
 def get_wait_time():
-    return sum(traci.lane.getWaitingTime(lane) for lane in LANES)
+    total = 0
+    for veh_id in traci.vehicle.getIDList():
+        total += traci.vehicle.getWaitingTime(veh_id)
+    return total
 
 
 def run_baseline():
     traci.start(["sumo", "-c", CONFIG_PATH])
     step = 0
-    total_wait = 0.0
+    vehicle_wait_times = {}
+
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         if step % 200 == 0:
             phase = traci.trafficlight.getPhase(TL_ID)
             traci.trafficlight.setPhase(TL_ID, 2 if phase == 0 else 0)
-        total_wait += get_wait_time()
+
+        # Track accumulated wait time for all active vehicles
+        for veh_id in traci.vehicle.getIDList():
+            vehicle_wait_times[veh_id] = traci.vehicle.getAccumulatedWaitingTime(veh_id)
+
         step += 1
+
+    total_wait = sum(vehicle_wait_times.values())
     traci.close()
     return total_wait
 
@@ -167,11 +178,11 @@ def run_episode(agent, training=True):
     traci.start(["sumo", "-c", CONFIG_PATH])
 
     step = 0
-    total_wait = 0.0
     yellow_countdown = 0
     pending_phase = None
     current_green = 0
     accumulated_reward = 0.0
+    vehicle_wait_times = {}
 
     prev_state = None
     prev_action = None
@@ -211,8 +222,12 @@ def run_episode(agent, training=True):
 
         traci.simulationStep()
         wait = get_wait_time()
-        total_wait += wait
         accumulated_reward += -wait
+
+        # Track accumulated wait time for all active vehicles
+        for veh_id in traci.vehicle.getIDList():
+            vehicle_wait_times[veh_id] = traci.vehicle.getAccumulatedWaitingTime(veh_id)
+
         step += 1
 
     if training and prev_state is not None:
@@ -220,6 +235,7 @@ def run_episode(agent, training=True):
                     accumulated_reward, prev_value, True)
         agent.update()
 
+    total_wait = sum(vehicle_wait_times.values())
     traci.close()
     return total_wait
 
@@ -230,11 +246,13 @@ def main():
     print(f"Baseline: {baseline_wait:.2f}s total | {baseline_wait / 520:.2f}s per car\n")
 
     agent = PPOAgent()
+    episode_improvements = []
 
     print(f"Training PPO agent for {NUM_EPISODES} episodes...\n")
     for ep in range(NUM_EPISODES):
         ep_wait = run_episode(agent, training=True)
         pct = ((baseline_wait - ep_wait) / baseline_wait) * 100
+        episode_improvements.append(pct)
         print(f"  Episode {ep + 1:>2}/{NUM_EPISODES} | "
               f"Wait: {ep_wait:>10.2f}s | "
               f"Per car: {ep_wait / 520:>7.2f}s | "
@@ -254,6 +272,20 @@ def main():
 
     torch.save(agent.network.state_dict(), "ppo_traffic_model.pt")
     print("\nModel saved to ppo_traffic_model.pt")
+
+    # Plot learning curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, NUM_EPISODES + 1), episode_improvements, linewidth=2)
+    plt.axhline(y=30, color='r', linestyle='--', label='30% Target')
+    plt.axhline(y=improvement, color='g', linestyle='--', label=f'Final Eval: {improvement:.1f}%')
+    plt.xlabel('Episode', fontsize=12)
+    plt.ylabel('Improvement vs Baseline (%)', fontsize=12)
+    plt.title('PPO Training Progress', fontsize=14, fontweight='bold')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('training_progress.png', dpi=150)
+    print("Training graph saved to training_progress.png")
 
 
 if __name__ == "__main__":
